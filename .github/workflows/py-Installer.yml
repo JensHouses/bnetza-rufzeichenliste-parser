@@ -48,8 +48,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.sha }}
+          tag_name: build-${{ github.sha }}
           name: Release ${{ github.sha }}
+          files: Executable-${{ runner.os }}.zip
           draft: false
           prerelease: false
 
