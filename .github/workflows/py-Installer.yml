@@ -36,3 +36,55 @@ jobs:
         with:
           name: Executable-${{ runner.os }}
           path: ./dist/
+
+
+      - name: Archive production artifacts
+        run: |
+          zip -r Executable-${{ runner.os }}.zip ./dist/*
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset - Windows
+        if: runner.os == 'Windows'
+        id: upload-release-asset-win
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./Executable-Windows.zip
+          asset_name: Executable-Windows.zip
+          asset_content_type: application/zip
+
+      - name: Upload Release Asset - Linux
+        if: runner.os == 'Linux'
+        id: upload-release-asset-linux
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./Executable-Linux.zip
+          asset_name: Executable-Linux.zip
+          asset_content_type: application/zip
+
+      - name: Upload Release Asset - macOS
+        if: runner.os == 'macOS'
+        id: upload-release-asset-mac
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./Executable-macOS.zip
+          asset_name: Executable-macOS.zip
+          asset_content_type: application/zip
