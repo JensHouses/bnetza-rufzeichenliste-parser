@@ -65,6 +65,7 @@ jobs:
           asset_name: Executable-Windows.zip
           asset_content_type: application/zip
           release_name: master
+          tag_name: master
 
       - name: Upload Release Asset - Linux
         if: runner.os == 'Linux'
@@ -78,6 +79,7 @@ jobs:
           asset_name: Executable-Linux.zip
           asset_content_type: application/zip
           release_name: master
+          tag_name: master
 
       - name: Upload Release Asset - macOS
         if: runner.os == 'macOS'
@@ -91,3 +93,4 @@ jobs:
           asset_name: Executable-macOS.zip
           asset_content_type: application/zip
           release_name: master
+          tag_name: master
