@@ -34,6 +34,8 @@ from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.pdfpage import PDFPage
 from pdfminer.pdfparser import PDFParser
 import re
+import csv
+from datetime import datetime
 
 # Set up the global logger variable
 logging.basicConfig(
@@ -88,10 +90,14 @@ def get_rufzeichen_file(
 
 if __name__ == "__main__":
     # start the process by downloading the file
+    print("Downloading File...", flush=True)
     file_content = get_rufzeichen_file()
-
+    print("Download complete...", flush=True)
     # did we get a file? Then process it
     if file_content:
+
+        date_string = datetime.now().strftime('%Y_%m_%d')
+        filename = f'AFU_Liste_{date_string}.csv'
         # This variable will later contain the text per pdf page
         output_string = StringIO()
 
@@ -100,6 +106,7 @@ if __name__ == "__main__":
 
         # Create the document
         document = PDFDocument(parser)
+
 
         # Check if the file is password protected and abort, if necessary
         if not document.is_extractable:
@@ -113,68 +120,80 @@ if __name__ == "__main__":
         # regex for German call signs
         regex_string = r"^(D[A-D|F-R][0-9][A-Z]{1,3}),\s(A|E|N),"
 
-        # loop over all pages in the document
-        for page in PDFPage.create_pages(document):
-            interpreter.process_page(page)
+        with open(filename, mode='w') as file:
+            writer = csv.writer(file, delimiter=";")
+            # loop over all pages in the document
+            print("Processing File: |", end='')
+            i = 1
+            for page in PDFPage.create_pages(document):
+                i += 1
+                if i % 5 == 0:
+                    print('|', end='', flush=True)
 
-            # Split up the page by lines
-            lines = output_string.getvalue().split("\n")
+                interpreter.process_page(page)
 
-            # Target field which will contain the catenated contents
-            parser_value = ""
+                # Split up the page by lines
+                lines = output_string.getvalue().split("\n")
 
-            # Triggers whether values should be attached or not
-            attach_value = False
+                # Target field which will contain the catenated contents
+                parser_value = ""
 
-            # loop over all lines on this page
-            for line in lines:
-                # Regex represents potential valid call sign
-                matches = re.search(regex_string, line)
-                if matches:
-                    # Is the value not empty?
-                    if parser_value != "":
-                        # And does its value start with something that looks like a call sign?
-                        matches = re.search(regex_string, parser_value)
-                        if matches:
-                            # transpose the value to a unified csv format
-                            # fmt:off
-                            parser_value = parser_value.replace(", ", ";").replace("; ", ";")
-                            # fmt:on
-                            # and print the value
-                            print(parser_value)
-                    # Accept the value and tell the parser that additional lines can be attached
-                    parser_value = line
-                    attach_value = True
-                else:
-                    # crude but simple header parser
-                    if "Liste der" in line:
-                        # don't attach anything from here on up until we encounter a "Seite" text
-                        attach_value = False
-                        # but ensure to dump the last value from the previous page
+                # Triggers whether values should be attached or not
+                attach_value = False
+
+                # loop over all lines on this page
+                for line in lines:
+                    # Regex represents potential valid call sign
+                    matches = re.search(regex_string, line)
+                    if matches:
+                        # Is the value not empty?
                         if parser_value != "":
+                            # And does its value start with something that looks like a call sign?
                             matches = re.search(regex_string, parser_value)
                             if matches:
-                                # fmt:off
                                 # transpose the value to a unified csv format
-                                parser_value = parser_value.replace(", ", ";").replace("; ", ";")
+                                # fmt:off
+                                parser_value = parser_value.replace(", ", ",").replace("; ", ",")
                                 # fmt:on
-                                print(parser_value)
-                        parser_value = ""
-                    # "Seite" --> end of page; we can start attaching again
-                    elif "Seite" in line:
+                                # and print the value
+                                #print(type(parser_value))
+                                writer.writerow(parser_value.split(','))
+                        # Accept the value and tell the parser that additional lines can be attached
+                        parser_value = line
                         attach_value = True
-                    # default handler; attach the string if we have retrieved something
                     else:
-                        if attach_value and line.strip() != "":
-                            parser_value = parser_value + line
-            # and dump the last element from the page that we've just processed
-            if parser_value != "":
-                matches = re.search(regex_string, parser_value)
-                if matches:
-                    # transpose the value to a unified csv format
-                    parser_value = parser_value.replace(", ", ";").replace("; ", ";")
-                    print(parser_value)
+                        # crude but simple header parser
+                        if "Liste der" in line:
+                            # don't attach anything from here on up until we encounter a "Seite" text
+                            attach_value = False
+                            # but ensure to dump the last value from the previous page
+                            if parser_value != "":
+                                matches = re.search(regex_string, parser_value)
+                                if matches:
+                                    # fmt:off
+                                    # transpose the value to a unified csv format
+                                    parser_value = parser_value.replace(", ", ",").replace("; ", ",")
+                                    # fmt:on
+                                    #print(parser_value)
+                                    writer.writerow(parser_value.split(','))
+                            parser_value = ""
+                        # "Seite" --> end of page; we can start attaching again
+                        elif "Seite" in line:
+                            attach_value = True
+                        # default handler; attach the string if we have retrieved something
+                        else:
+                            if attach_value and line.strip() != "":
+                                parser_value = parser_value + line
+                # and dump the last element from the page that we've just processed
+                if parser_value != "":
+                    matches = re.search(regex_string, parser_value)
+                    if matches:
+                        # transpose the value to a unified csv format
+                        parser_value = parser_value.replace(", ", ",").replace("; ", ",")
+                        #print(parser_value)
+                        writer.writerow(parser_value.split(','))
 
-            # truncate the output string to zero length and then loop to the next doc page
-            output_string.seek(0)
-            output_string.truncate(0)
+                # truncate the output string to zero length and then loop to the next doc page
+                output_string.seek(0)
+                output_string.truncate(0)
+        print("\nFinished\n")
