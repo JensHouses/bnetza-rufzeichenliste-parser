@@ -27,7 +27,7 @@ jobs:
           pip install pyinstaller
 
       - name: Build with PyInstaller
-        run: pyinstaller --onefile src/bnetza-parser.py
+        run: pyinstaller --onefile --hidden-import=requests src/bnetza-parser.py
 
       - name: Archive production artifacts (Linux/macOS)
         if: runner.os != 'Windows'
